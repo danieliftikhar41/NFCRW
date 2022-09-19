@@ -104,12 +104,12 @@ public class MainActivity extends AppCompatActivity {
         if (msgs == null || msgs.length == 0) return;
         String text = "";
 
-        //String tagId = new String(msgs[0].getRecords()[0].getType()));
+
 
         byte[] payload = msgs[0].getRecords()[0].getPayload();
         String textEncoding = ((payload[0] & 128) == 0) ? "UTF-8" : "UTF-16";
         int languageCodeLenght = payload[0] & 0077;
-        //String languageCode = new String(payload, 1 , languageCodeLenght, "US-ASCII");
+
 
         try {
             text = new String(payload,languageCodeLenght + 1 , payload.length - languageCodeLenght - 1,textEncoding);
