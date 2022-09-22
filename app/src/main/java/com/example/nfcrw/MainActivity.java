@@ -13,6 +13,7 @@ import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.Ndef;
 import android.nfc.tech.NfcA;
+import android.nfc.tech.NfcV;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.Log;
@@ -20,11 +21,13 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import java.util.Formatter;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.text.Format;
+import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -55,21 +58,14 @@ public class MainActivity extends AppCompatActivity {
         ActivateButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                try {
                     if(myTag== null) {
                         Toast.makeText(context, error_detected, Toast.LENGTH_LONG).show();
                     }
                     else {
-                        write(edit_message.getText().toString(), myTag);
+                        String data = edit_message.getText().toString();
+                        writeTag(myTag,data);
                         Toast.makeText(context,write_success, Toast.LENGTH_LONG).show();
                     }
-
-                } catch (IOException e ) {
-                    Toast.makeText(context, write_error, Toast.LENGTH_LONG).show();
-                    e.printStackTrace();
-                } catch (FormatException e ) {
-                    Toast.makeText(context, write_error, Toast.LENGTH_LONG).show();
-                }
             }
         });
 
@@ -85,6 +81,26 @@ public class MainActivity extends AppCompatActivity {
         tagDetected.addCategory(Intent.CATEGORY_DEFAULT);
         writingTagFilters = new IntentFilter[] { tagDetected };
 
+    }
+    public static byte getByte(byte[] input, int key){
+        try {
+            return input[key];
+        } catch (Exception e){
+            return (byte)0x00;
+        }
+    }
+    public String printByte(byte[] input){
+        try {
+            return new String(input, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        return "";
+    }
+
+    public String printHex(String input){
+        return input;
     }
     private void readfromintent(Intent intent) {
         String action = intent.getAction();
@@ -118,13 +134,181 @@ public class MainActivity extends AppCompatActivity {
         }
         nfc_contents.setText("NFC Content:" + text);
     }
+
+    private byte[] convertHexToByte(String str) {
+        byte[] ans = new byte[str.length() / 2];
+
+        System.out.println("Hex String : " + str);
+
+        for (int i = 0; i < ans.length; i++) {
+            int index = i * 2;
+
+            // Using parseInt() method of Integer class
+            int val = Integer.parseInt(str.substring(index, index + 2), 16);
+            ans[i] = (byte) val;
+        }
+
+        // Printing the required Byte Array
+        System.out.print("Byte Array : ");
+        for (int i = 0; i < ans.length; i++) {
+            System.out.print(ans[i] + " ");
+        }
+        return ans;
+    }
+
+    public static String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder(bytes.length * 2);
+        Formatter formatter = new Formatter(sb);
+        for (byte b : bytes) {
+            formatter.format("%02X", b);
+        }
+        formatter.close();
+        return sb.toString();
+    }
+
+    public String join(String[] input, String delim) {
+        String output = "";
+        if (input.length > 0)
+            output += input[0];
+        if (input.length > 1)
+            for (int i = 1; i < input.length; i++)
+                output += delim + input[i];
+        return output;
+    }
+    public void writeTag(Tag tag, String data) {
+        NfcV myTag = NfcV.get(tag);
+        int startByte = 0;
+            try {
+                myTag.connect();
+                if (myTag.isConnected()) {
+                    byte[] info = data.getBytes();
+                    System.out.println("INFO" + Arrays.toString(info));
+                    int dataLength = info.length;
+                    if (data.length()/4 <= 64){
+                        byte[] args = new byte[15];
+                        args[0] = 0x20;
+                        args[1] = 0x21;
+                        byte[] id = tag.getId();
+                        for (int o=0; o<8; o++)
+                            args[o+2] = id[o];
+                        for (int i = 0; i<64; i++) {
+                            args[10] = (byte) i;
+                            args[11] = 0x00;
+                            args[12] = 0x00;
+                            args[13] = 0x00;
+                            args[14] = 0x00;
+                            byte[] out = myTag.transceive(args);
+                            String out2 = bytesToHex(out);
+                            System.out.println("1:.. " + printHex(out2));
+                        }
+                        for (int i = 0; i<=dataLength/4; i++) {
+                            args[10] = (byte) i;
+                            args[11] = getByte(info, (i*4)+0);
+                            args[12] = getByte(info, (i*4)+1);
+                            args[13] = getByte(info, (i*4)+2);
+                            args[14] = getByte(info, (i*4)+3);
+                            byte[] out = myTag.transceive(args);
+                            String out2 = bytesToHex(out);
+                            System.out.println("2:.. " + printHex(out2));
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                System.out.println(e.getMessage());
+            } finally {
+                if (myTag != null) {
+                    try {
+                        myTag.close();
+                    } catch (IOException e) {
+                        System.out.println(e.getMessage());
+                    }
+                }
+            }
+
+    }
+
     private void write(String text, Tag tag) throws IOException,FormatException {
-        NdefRecord[] records = {createRecord(text)};
-        NdefMessage message = new NdefMessage(records);
-        Ndef ndef = Ndef.get(tag);
-        ndef.connect();
-        ndef.writeNdefMessage(message);
-        ndef.close();
+
+        NfcV nfcV = NfcV.get(tag);
+//        nfcV.connect();
+//
+//        String dataString = "12";
+//        int offset = 0;  // offset of first block to read
+//        int blocks = 8;  // number of blocks to read
+//        byte[] data = convertHexToByte((dataString));
+//        byte[] cmd = new byte[] {
+//                (byte)0x60, // FLAGS
+//                (byte)0x21, // WRITE SINGLE COMMAND
+//                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // UID
+//                (byte)0x00, // OFFSET
+//                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00  //DATA
+//        };
+//        System.arraycopy(tag.getId(), 0, cmd, 2, 8);
+//        for (int i = 0; i < blocks; ++i) {
+//            cmd[10] = (byte)((offset + i) & 0x0ff);
+//            System.arraycopy(data, 4 * i, cmd, 11, 4);
+//
+//            byte[] response = nfcV.transceive(cmd);
+//        }
+        byte[] id = tag.getId();
+
+        if (nfcV != null) {
+
+            byte[] infoCmd = new byte[2 + id.length];
+            // set "addressed" flag
+            infoCmd[0] = 0x20;
+            // ISO 15693 Get System Information command byte
+            infoCmd[1] = 0x2B;
+            //adding the tag id
+            System.arraycopy(id, 0, infoCmd, 2, id.length);
+
+            int memoryBlocks = 0;
+            try {
+                nfcV.connect();
+                byte[] data = nfcV.transceive(infoCmd);
+
+                memoryBlocks = Integer.parseInt(String.format("%02X", data[data.length - 3]), 16);
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    nfcV.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+//        byte[] cmdInfo = new byte[]{
+//                (byte)0x20,
+//                (byte)0x21,
+//                (byte)0x00,
+//                (byte)0xFE,
+//                (byte)0xFE,
+//                (byte)0xFE,
+//                (byte)0xFA,
+//                (byte)0xFE,
+//                (byte)0xFA,
+//                (byte)0xFE,
+//        };
+
+//
+//        System.arraycopy(tag.getId(), 0, cmdInfo, 2, 8);
+//            byte[] answer = new byte[0];
+//            try {
+//                answer = nfcV.transceive(cmd);
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//                Log.d("HA OCURRIDO UN ERROR EN EL ANSWER", "hola");
+//            }
+//            System.out.println("INFORMACION DEL CHIP" + Arrays.toString(answer));
+//        NdefRecord[] records = {createRecord(text)};
+//        NdefMessage message = new NdefMessage(records);
+//        Ndef ndef = Ndef.get(tag);
+//        ndef.connect();
+//        ndef.writeNdefMessage(message);
+//        ndef.close();
+        }
     }
 
     private NdefRecord createRecord(String text) throws UnsupportedEncodingException {
@@ -167,6 +351,10 @@ public class MainActivity extends AppCompatActivity {
         WriteModeOn();
     }
 
+
+    private void getInfo() {
+
+    }
 
 
     private void WriteModeOn(){
