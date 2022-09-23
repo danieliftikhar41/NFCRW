@@ -11,8 +11,6 @@ import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
-import android.nfc.tech.Ndef;
-import android.nfc.tech.NfcA;
 import android.nfc.tech.NfcV;
 import android.os.Bundle;
 import android.os.Parcelable;
@@ -21,12 +19,13 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Formatter;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
-import java.text.Format;
 import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
@@ -63,7 +62,8 @@ public class MainActivity extends AppCompatActivity {
                     }
                     else {
                         String data = edit_message.getText().toString();
-                        writeTag(myTag,data);
+//                        writeTagNFCv(myTag,data);
+                        readTagNFCv(myTag);
                         Toast.makeText(context,write_success, Toast.LENGTH_LONG).show();
                     }
             }
@@ -166,6 +166,56 @@ public class MainActivity extends AppCompatActivity {
         return sb.toString();
     }
 
+    public static void readTagNFCv (Tag currentTag){
+
+        System.out.println("currentTag" + currentTag);
+            NfcV nfcvTag = NfcV.get(currentTag);
+        System.out.println("MYTAG ES :" + nfcvTag);
+            int numberOfBlocks = 0;
+        StringBuilder fullData = new StringBuilder();
+        StringBuilder utf8String = new StringBuilder();
+        StringBuilder blocksData = new StringBuilder();
+//            while(numberOfBlocks < 128)
+//            {
+//                try {
+//                    nfcvTag.connect();
+////                        connectTag.setText("Hello NFC!");
+//                } catch (IOException e) {
+//                    System.out.println("Error reading");
+//                    return;
+//                }
+//                try {
+////
+//                    byte[] tagUid = currentTag.getId();  // store tag UID for use in addressed commands
+////
+//                    byte[] cmd = new byte[] {
+//                            (byte)0x20,  // FLAGS
+//                            (byte)0x20,  // READ_SINGLE_BLOCK
+//                            0, 0, 0, 0, 0, 0, 0, 0,
+//                            (byte)(numberOfBlocks & 0x0ff)
+//                    };
+//                    System.arraycopy(tagUid, 0, cmd, 2, 8);  // paste tag UID into command
+//                    byte[] response = nfcvTag.transceive(cmd);
+//                    String data =  bytesToHex(response).substring(2);
+//                    String utf8 = new String(response , StandardCharsets.UTF_8);
+//
+//                    blocksData.append(data.replaceAll(" " , ""));
+//                    fullData.append(data.replaceAll(" " , ""));
+//                    utf8String.append(utf8);
+//                    nfcvTag.close();
+//
+//                    System.out.println(blocksData);
+//                    System.out.println(fullData);
+//                    System.out.println(utf8String);
+//                    numberOfBlocks = numberOfBlocks + 1;
+//
+//                } catch (IOException e) {
+//                    System.out.println("Error reading");
+//                    return;
+//                }
+//            }
+    }
+
     public String join(String[] input, String delim) {
         String output = "";
         if (input.length > 0)
@@ -175,8 +225,9 @@ public class MainActivity extends AppCompatActivity {
                 output += delim + input[i];
         return output;
     }
-    public void writeTag(Tag tag, String data) {
+    public void writeTagNFCv(Tag tag, String data) {
         NfcV myTag = NfcV.get(tag);
+        System.out.println(myTag);
         int startByte = 0;
             try {
                 myTag.connect();
@@ -184,7 +235,7 @@ public class MainActivity extends AppCompatActivity {
                     byte[] info = data.getBytes();
                     System.out.println("INFO" + Arrays.toString(info));
                     int dataLength = info.length;
-                    if (data.length()/4 <= 64){
+                    if (data.length()/4 <= 8192){
                         byte[] args = new byte[15];
                         args[0] = 0x20;
                         args[1] = 0x21;
