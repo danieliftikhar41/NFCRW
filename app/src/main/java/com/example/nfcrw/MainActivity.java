@@ -2,6 +2,7 @@ package com.example.nfcrw;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.annotation.SuppressLint;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -21,12 +22,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Formatter;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -44,10 +43,12 @@ public class MainActivity extends AppCompatActivity {
     TextView edit_message;
     TextView nfc_contents;
     Button ActivateButton;
+    Button ReadButton;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         edit_message = (TextView) findViewById(R.id.edit_message);
@@ -57,15 +58,14 @@ public class MainActivity extends AppCompatActivity {
         ActivateButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                    if(myTag== null) {
-                        Toast.makeText(context, error_detected, Toast.LENGTH_LONG).show();
-                    }
-                    else {
-                        String data = edit_message.getText().toString();
-//                        writeTagNFCv(myTag,data);
-                        readTagNFCv(myTag);
-                        Toast.makeText(context,write_success, Toast.LENGTH_LONG).show();
-                    }
+                if(myTag== null) {
+                    Toast.makeText(context, error_detected, Toast.LENGTH_LONG).show();
+                }
+                else {
+                    String data = edit_message.getText().toString();
+                    writeTagNFCv(myTag,data);
+                    Toast.makeText(context,write_success, Toast.LENGTH_LONG).show();
+                }
             }
         });
 
@@ -82,21 +82,14 @@ public class MainActivity extends AppCompatActivity {
         writingTagFilters = new IntentFilter[] { tagDetected };
 
     }
+
+
     public static byte getByte(byte[] input, int key){
         try {
             return input[key];
         } catch (Exception e){
             return (byte)0x00;
         }
-    }
-    public String printByte(byte[] input){
-        try {
-            return new String(input, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        return "";
     }
 
     public String printHex(String input){
@@ -116,6 +109,7 @@ public class MainActivity extends AppCompatActivity {
             buildTagViews(msgs);
         }
     }
+    @SuppressLint("SetTextI18n")
     private void buildTagViews(NdefMessage[] msgs) {
         if (msgs == null || msgs.length == 0) return;
         String text = "";
@@ -135,26 +129,6 @@ public class MainActivity extends AppCompatActivity {
         nfc_contents.setText("NFC Content:" + text);
     }
 
-    private byte[] convertHexToByte(String str) {
-        byte[] ans = new byte[str.length() / 2];
-
-        System.out.println("Hex String : " + str);
-
-        for (int i = 0; i < ans.length; i++) {
-            int index = i * 2;
-
-            // Using parseInt() method of Integer class
-            int val = Integer.parseInt(str.substring(index, index + 2), 16);
-            ans[i] = (byte) val;
-        }
-
-        // Printing the required Byte Array
-        System.out.print("Byte Array : ");
-        for (int i = 0; i < ans.length; i++) {
-            System.out.print(ans[i] + " ");
-        }
-        return ans;
-    }
 
     public static String bytesToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder(bytes.length * 2);
@@ -166,230 +140,124 @@ public class MainActivity extends AppCompatActivity {
         return sb.toString();
     }
 
-    public static void readTagNFCv (Tag currentTag){
+    public static void readTagNFCv (Tag currentTag, TextView nfc_contents){
 
         System.out.println("currentTag" + currentTag);
-            NfcV nfcvTag = NfcV.get(currentTag);
+        NfcV nfcvTag = NfcV.get(currentTag);
         System.out.println("MYTAG ES :" + nfcvTag);
-            int numberOfBlocks = 0;
+        int numberOfBlocks = 1;
         StringBuilder fullData = new StringBuilder();
         StringBuilder utf8String = new StringBuilder();
         StringBuilder blocksData = new StringBuilder();
-//            while(numberOfBlocks < 128)
-//            {
-//                try {
-//                    nfcvTag.connect();
-////                        connectTag.setText("Hello NFC!");
-//                } catch (IOException e) {
-//                    System.out.println("Error reading");
-//                    return;
-//                }
-//                try {
-////
-//                    byte[] tagUid = currentTag.getId();  // store tag UID for use in addressed commands
-////
-//                    byte[] cmd = new byte[] {
-//                            (byte)0x20,  // FLAGS
-//                            (byte)0x20,  // READ_SINGLE_BLOCK
-//                            0, 0, 0, 0, 0, 0, 0, 0,
-//                            (byte)(numberOfBlocks & 0x0ff)
-//                    };
-//                    System.arraycopy(tagUid, 0, cmd, 2, 8);  // paste tag UID into command
-//                    byte[] response = nfcvTag.transceive(cmd);
-//                    String data =  bytesToHex(response).substring(2);
-//                    String utf8 = new String(response , StandardCharsets.UTF_8);
+        while(numberOfBlocks < 24)
+        {
+            try {
+                nfcvTag.connect();
+            } catch (IOException e) {
+                System.out.println("Error reading");
+                return;
+            }
+            try {
 //
-//                    blocksData.append(data.replaceAll(" " , ""));
-//                    fullData.append(data.replaceAll(" " , ""));
-//                    utf8String.append(utf8);
-//                    nfcvTag.close();
+                byte[] tagUid = currentTag.getId();
 //
-//                    System.out.println(blocksData);
-//                    System.out.println(fullData);
-//                    System.out.println(utf8String);
-//                    numberOfBlocks = numberOfBlocks + 1;
-//
-//                } catch (IOException e) {
-//                    System.out.println("Error reading");
-//                    return;
-//                }
-//            }
-    }
+                byte[] cmd = new byte[] {
+                        (byte)0x20,
+                        (byte)0x20,
+                        0, 0, 0, 0, 0, 0, 0, 0,
+                        (byte)(numberOfBlocks & 0x0ff)
+                };
+                System.arraycopy(tagUid, 0, cmd, 2, 8);
+                byte[] response = nfcvTag.transceive(cmd);
+                String data =  bytesToHex(response).substring(2);
+                String utf8 = new String(response , StandardCharsets.UTF_8);
+                blocksData.append(data.replaceAll(" " , ""));
+                fullData.append(data.replaceAll(" " , ""));
+                utf8String.append(utf8);
+                nfcvTag.close();
 
-    public String join(String[] input, String delim) {
-        String output = "";
-        if (input.length > 0)
-            output += input[0];
-        if (input.length > 1)
-            for (int i = 1; i < input.length; i++)
-                output += delim + input[i];
-        return output;
+                System.out.println(blocksData);
+                System.out.println(fullData);
+                System.out.println(utf8String);
+                numberOfBlocks = numberOfBlocks + 1;
+
+            } catch (IOException e) {
+                System.out.println("Error reading");
+                return;
+            }
+        }
+        nfc_contents.setText(utf8String);
     }
     public void writeTagNFCv(Tag tag, String data) {
+
         NfcV myTag = NfcV.get(tag);
-        System.out.println(myTag);
-        int startByte = 0;
-            try {
-                myTag.connect();
-                if (myTag.isConnected()) {
-                    byte[] info = data.getBytes();
-                    System.out.println("INFO" + Arrays.toString(info));
-                    int dataLength = info.length;
-                    if (data.length()/4 <= 8192){
-                        byte[] args = new byte[15];
-                        args[0] = 0x20;
-                        args[1] = 0x21;
-                        byte[] id = tag.getId();
-                        for (int o=0; o<8; o++)
-                            args[o+2] = id[o];
-                        for (int i = 0; i<64; i++) {
-                            args[10] = (byte) i;
-                            args[11] = 0x00;
-                            args[12] = 0x00;
-                            args[13] = 0x00;
-                            args[14] = 0x00;
-                            byte[] out = myTag.transceive(args);
-                            String out2 = bytesToHex(out);
-                            System.out.println("1:.. " + printHex(out2));
-                        }
-                        for (int i = 0; i<=dataLength/4; i++) {
-                            args[10] = (byte) i;
-                            args[11] = getByte(info, (i*4)+0);
-                            args[12] = getByte(info, (i*4)+1);
-                            args[13] = getByte(info, (i*4)+2);
-                            args[14] = getByte(info, (i*4)+3);
-                            byte[] out = myTag.transceive(args);
-                            String out2 = bytesToHex(out);
-                            System.out.println("2:.. " + printHex(out2));
-                        }
+        try {
+            myTag.connect();
+            if (myTag.isConnected()) {
+                int c = 1;
+                byte[] info = data.getBytes();
+                int dataLength = info.length;
+                if (data.length()/4 <= 8192){
+                    byte[] args = new byte[15];
+                    args[0] = 0x20;
+                    args[1] = 0x21;
+                    byte[] id = tag.getId();
+                    for (int o=0; o<8; o++)
+                        args[o+2] = id[o];
+                    for (int i = 0; i<64; i++) {
+                        System.out.println(c);
+                        args[10] = (byte) c;
+                        args[11] = 0x00;
+                        args[12] = 0x00;
+                        args[13] = 0x00;
+                        args[14] = 0x00;
+                        c++;
+                        byte[] out = myTag.transceive(args);
+                        String out2 = bytesToHex(out);
+                        System.out.println(printHex(out2));
+                    }
+                    c = 1;
+                    for (int i = 0; i<=dataLength/4; i++) {
+                        System.out.println(c);
+                        args[10] = (byte)c;
+                        args[11] = getByte(info, (i*4)+0);
+                        args[12] = getByte(info, (i*4)+1);
+                        args[13] = getByte(info, (i*4)+2);
+                        args[14] = getByte(info, (i*4)+3);
+                        c++;
+                        byte[] out = myTag.transceive(args);
+                        String out2 = bytesToHex(out);
+                        System.out.println(printHex(out2));
                     }
                 }
-            } catch (IOException e) {
-                System.out.println(e.getMessage());
-            } finally {
-                if (myTag != null) {
-                    try {
-                        myTag.close();
-                    } catch (IOException e) {
-                        System.out.println(e.getMessage());
-                    }
-                }
+
             }
-
-    }
-
-    private void write(String text, Tag tag) throws IOException,FormatException {
-
-        NfcV nfcV = NfcV.get(tag);
-//        nfcV.connect();
-//
-//        String dataString = "12";
-//        int offset = 0;  // offset of first block to read
-//        int blocks = 8;  // number of blocks to read
-//        byte[] data = convertHexToByte((dataString));
-//        byte[] cmd = new byte[] {
-//                (byte)0x60, // FLAGS
-//                (byte)0x21, // WRITE SINGLE COMMAND
-//                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, // UID
-//                (byte)0x00, // OFFSET
-//                (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00  //DATA
-//        };
-//        System.arraycopy(tag.getId(), 0, cmd, 2, 8);
-//        for (int i = 0; i < blocks; ++i) {
-//            cmd[10] = (byte)((offset + i) & 0x0ff);
-//            System.arraycopy(data, 4 * i, cmd, 11, 4);
-//
-//            byte[] response = nfcV.transceive(cmd);
-//        }
-        byte[] id = tag.getId();
-
-        if (nfcV != null) {
-
-            byte[] infoCmd = new byte[2 + id.length];
-            // set "addressed" flag
-            infoCmd[0] = 0x20;
-            // ISO 15693 Get System Information command byte
-            infoCmd[1] = 0x2B;
-            //adding the tag id
-            System.arraycopy(id, 0, infoCmd, 2, id.length);
-
-            int memoryBlocks = 0;
-            try {
-                nfcV.connect();
-                byte[] data = nfcV.transceive(infoCmd);
-
-                memoryBlocks = Integer.parseInt(String.format("%02X", data[data.length - 3]), 16);
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
+        } catch (IOException e) {
+            System.out.println(e.getMessage());
+        } finally {
+            if (myTag != null) {
                 try {
-                    nfcV.close();
+                    myTag.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    System.out.println(e.getMessage());
                 }
             }
-
-//        byte[] cmdInfo = new byte[]{
-//                (byte)0x20,
-//                (byte)0x21,
-//                (byte)0x00,
-//                (byte)0xFE,
-//                (byte)0xFE,
-//                (byte)0xFE,
-//                (byte)0xFA,
-//                (byte)0xFE,
-//                (byte)0xFA,
-//                (byte)0xFE,
-//        };
-
-//
-//        System.arraycopy(tag.getId(), 0, cmdInfo, 2, 8);
-//            byte[] answer = new byte[0];
-//            try {
-//                answer = nfcV.transceive(cmd);
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//                Log.d("HA OCURRIDO UN ERROR EN EL ANSWER", "hola");
-//            }
-//            System.out.println("INFORMACION DEL CHIP" + Arrays.toString(answer));
-//        NdefRecord[] records = {createRecord(text)};
-//        NdefMessage message = new NdefMessage(records);
-//        Ndef ndef = Ndef.get(tag);
-//        ndef.connect();
-//        ndef.writeNdefMessage(message);
-//        ndef.close();
         }
-    }
-
-    private NdefRecord createRecord(String text) throws UnsupportedEncodingException {
-        String lang = "en";
-        byte[] textBytes = text.getBytes();
-        byte[] langBytes = text.getBytes("US-ASCII");
-        int langLength = langBytes.length;
-        int textLength = textBytes.length;
-        byte[] payload = new byte[1 + langLength + textLength];
-
-        payload[0] = (byte) langLength;
-
-        System.arraycopy(langBytes,0,payload,1, langLength);
-        System.arraycopy(textBytes,0,payload,1+langLength,textLength);
-
-        NdefRecord recordNFC = new NdefRecord(NdefRecord.TNF_WELL_KNOWN, NdefRecord.RTD_TEXT, new byte[0], payload);
-        return recordNFC;
 
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+
         setIntent(intent);
         readfromintent(intent);
         if (NfcAdapter.ACTION_TAG_DISCOVERED.equals(intent.getAction())) {
             myTag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+
+            readTagNFCv(myTag,nfc_contents);
         }
     }
-
     @Override
     public void onPause() {
         super.onPause();
@@ -401,12 +269,6 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         WriteModeOn();
     }
-
-
-    private void getInfo() {
-
-    }
-
 
     private void WriteModeOn(){
         writeMode = true;
